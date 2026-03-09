@@ -33,3 +33,13 @@ Each game is a **single HTML file** with three sections:
 - Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, `refactor:`
 - Commit each game or feature change as a separate commit with a short subject and bullet-point body describing added capabilities
 - Always push to `origin main` after committing
+- **Always update CLAUDE.md** as part of every commit — add an entry to the Changelog section below
+
+## Changelog
+
+| Commit | Date | Description |
+|--------|------|-------------|
+| `260f60d` | 2026-03-09 | `chore` — add .gitignore for macOS .DS_Store |
+| `e5a00f5` | 2026-03-09 | `feat` — add Tic Tac Toe (score tracking, win highlight, new game) |
+| `bbf7077` | 2026-03-09 | `feat` — add Wuziqi 15×15 canvas game (stone preview, win detection, undo) |
+| `a8da4cc` | 2026-03-09 | `chore` — add CLAUDE.md with architecture and workflow docs |

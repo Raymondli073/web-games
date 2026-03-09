@@ -22,7 +22,7 @@ Each game is a **single HTML file** with three sections:
 - HTML markup — minimal structure (canvas or grid, score displays, buttons)
 - `<script>` — all game logic inline at the bottom
 
-**Wuziqi** (`wuziqi.html`) uses an HTML5 `<canvas>` for rendering the board and stones. Game state is held in a flat `grid` array (15×15), a `history` stack of `[row, col]` moves, and `undoUsed` counters per player. Drawing is fully re-rendered on every state change via `draw()`.
+**Wuziqi** (`wuziqi.html`) uses an HTML5 `<canvas>` for rendering the board and stones. Game state is held in a flat `grid` array (15×15), a `history` stack of `[row, col]` moves, `undoUsed` counters per player, and a per-turn countdown timer (`timeLeft`, `timerInterval`). Drawing is fully re-rendered on every state change via `draw()`. Timer functions: `startTimer()`, `stopTimer()`, `updateTimerDisplay()`, `handleTimeout()`.
 
 **Tic Tac Toe** (`tictactoe.html`) uses a CSS grid of `<div>` cells. State is a flat 9-element array.
 
@@ -43,3 +43,5 @@ Each game is a **single HTML file** with three sections:
 | `e5a00f5` | 2026-03-09 | `feat` — add Tic Tac Toe (score tracking, win highlight, new game) |
 | `bbf7077` | 2026-03-09 | `feat` — add Wuziqi 15×15 canvas game (stone preview, win detection, undo) |
 | `a8da4cc` | 2026-03-09 | `chore` — add CLAUDE.md with architecture and workflow docs |
+| `ed4c32e` | 2026-03-09 | `chore` — add changelog table and CLAUDE.md update rule |
+| *(next)*  | 2026-03-09 | `feat` — add per-turn 60s countdown timer to Wuziqi |

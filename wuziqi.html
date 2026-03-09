@@ -63,6 +63,31 @@
       color: #f0d9a0;
     }
 
+    .timer {
+      font-size: 1.1rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: bold;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #0e0904;
+      color: #6a5030;
+      letter-spacing: 2px;
+      transition: color 0.3s, background 0.3s;
+    }
+    .timer.active {
+      color: #f0d9a0;
+      background: #2a1a08;
+    }
+    .timer.urgent {
+      color: #ff4040;
+      background: #2a0808;
+      animation: blink 0.6s step-start infinite;
+    }
+    @keyframes blink {
+      50% { opacity: 0.4; }
+    }
+
     #status-wrap {
       text-align: center;
       min-width: 120px;
@@ -144,6 +169,7 @@
       <div class="label">BLACK</div>
       <div class="stone black"></div>
       <div class="value" id="score-black">0</div>
+      <div class="timer active" id="timer-black">1:00</div>
     </div>
 
     <div id="status-wrap">
@@ -158,6 +184,7 @@
       <div class="label">WHITE</div>
       <div class="stone white"></div>
       <div class="value" id="score-white">0</div>
+      <div class="timer" id="timer-white">1:00</div>
     </div>
   </div>
 
@@ -182,9 +209,12 @@
 
     const scores = { black: 0, white: 0 };
     const MAX_UNDOS = 3;
+    const TURN_TIME = 60;
     let grid, history, currentPlayer, gameOver, undoUsed;
+    let timerInterval = null, timeLeft = TURN_TIME;
 
     function init() {
+      stopTimer();
       grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
       history = [];
       currentPlayer = 1; // 1=black, 2=white
@@ -195,6 +225,8 @@
       document.getElementById('turn-indicator').style.display = '';
       updateTurnIndicator();
       updateUndoButtons();
+      resetTimerDisplay();
+      startTimer();
       draw();
     }
 
@@ -316,6 +348,7 @@
         scores[winner.toLowerCase()]++;
         updateScores();
         gameOver = true;
+        stopTimer();
         updateUndoButtons();
         return;
       }
@@ -324,6 +357,7 @@
         document.getElementById('status').textContent = 'Draw!';
         document.getElementById('turn-indicator').style.display = 'none';
         gameOver = true;
+        stopTimer();
         updateUndoButtons();
         return;
       }
@@ -335,6 +369,7 @@
         `Last: ${String.fromCharCode(65 + col)}${row + 1}`;
       updateTurnIndicator();
       updateUndoButtons();
+      startTimer();
     });
 
     canvas.addEventListener('mousemove', e => {
@@ -406,6 +441,7 @@
         ? `Last: ${String.fromCharCode(65 + prev[1])}${prev[0] + 1}` : '';
       updateTurnIndicator();
       updateUndoButtons();
+      startTimer();
       draw();
     }
 
@@ -431,6 +467,62 @@
       btnWhite.disabled = gameOver
         ? !(history.length > 0 && justMoved === 2 && remWhite > 0)
         : !(justMoved === 2 && remWhite > 0 && history.length > 0);
+    }
+
+    /* ── Timer ── */
+    function startTimer() {
+      stopTimer();
+      timeLeft = TURN_TIME;
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) {
+          stopTimer();
+          handleTimeout();
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    }
+
+    function updateTimerDisplay() {
+      const secs = Math.max(0, timeLeft);
+      const text = `0:${String(secs).padStart(2, '0')}`;
+      const blackEl = document.getElementById('timer-black');
+      const whiteEl = document.getElementById('timer-white');
+
+      if (currentPlayer === 1) {
+        blackEl.textContent = text;
+        blackEl.className = 'timer active' + (secs <= 10 ? ' urgent' : '');
+        whiteEl.textContent = '1:00';
+        whiteEl.className = 'timer';
+      } else {
+        whiteEl.textContent = text;
+        whiteEl.className = 'timer active' + (secs <= 10 ? ' urgent' : '');
+        blackEl.textContent = '1:00';
+        blackEl.className = 'timer';
+      }
+    }
+
+    function resetTimerDisplay() {
+      document.getElementById('timer-black').textContent = '1:00';
+      document.getElementById('timer-black').className = 'timer';
+      document.getElementById('timer-white').textContent = '1:00';
+      document.getElementById('timer-white').className = 'timer';
+    }
+
+    function handleTimeout() {
+      const loser  = currentPlayer === 1 ? 'Black' : 'White';
+      const winner = currentPlayer === 1 ? 'White' : 'Black';
+      document.getElementById('status').textContent = `${loser} ran out of time — ${winner} wins!`;
+      document.getElementById('turn-indicator').style.display = 'none';
+      scores[winner.toLowerCase()]++;
+      updateScores();
+      gameOver = true;
+      updateUndoButtons();
     }
 
     function updateTurnIndicator() {

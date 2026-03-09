@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五子棋 Wuziqi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #1c1208;
+      font-family: 'Segoe UI', 'PingFang SC', sans-serif;
+      color: #f0d9a0;
+    }
+
+    h1 {
+      font-size: 2rem;
+      letter-spacing: 6px;
+      margin-bottom: 0.5rem;
+      color: #f0d9a0;
+      text-shadow: 0 2px 8px #000a;
+    }
+
+    #subtitle {
+      font-size: 0.85rem;
+      color: #a08050;
+      margin-bottom: 1rem;
+      letter-spacing: 3px;
+    }
+
+    #ui {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .score-box {
+      text-align: center;
+      min-width: 60px;
+    }
+    .score-box .label {
+      font-size: 0.75rem;
+      color: #a08050;
+      letter-spacing: 1px;
+    }
+    .score-box .stone {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      margin: 4px auto;
+      box-shadow: inset -3px -3px 6px rgba(0,0,0,0.5), inset 2px 2px 4px rgba(255,255,255,0.15);
+    }
+    .stone.black { background: radial-gradient(circle at 38% 35%, #888, #111 70%); }
+    .stone.white { background: radial-gradient(circle at 38% 35%, #fff, #bbb 70%); }
+    .score-box .value {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #f0d9a0;
+    }
+
+    #status-wrap {
+      text-align: center;
+      min-width: 120px;
+    }
+
+    #status {
+      font-size: 1rem;
+      color: #f0d9a0;
+      letter-spacing: 1px;
+    }
+
+    #turn-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 0.85rem;
+      color: #a08050;
+    }
+
+    #turn-stone {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      transition: background 0.3s;
+    }
+
+    canvas {
+      border-radius: 4px;
+      cursor: crosshair;
+      box-shadow: 0 8px 40px #0008, 0 0 0 4px #7a5c2a;
+      display: block;
+    }
+
+    #buttons {
+      margin-top: 1rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    button {
+      padding: 0.55rem 1.4rem;
+      font-size: 0.85rem;
+      border: 1.5px solid #7a5c2a;
+      background: transparent;
+      color: #f0d9a0;
+      border-radius: 6px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s, color 0.2s, opacity 0.2s;
+    }
+    button:hover:not(:disabled) { background: #7a5c2a; color: #fff; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .undo-btn { border-color: #7a5c2a; }
+    .undo-btn.black-undo { border-color: #555; color: #ccc; }
+    .undo-btn.black-undo:hover:not(:disabled) { background: #444; color: #fff; }
+    .undo-btn.white-undo { border-color: #b0b0b0; color: #e8e8e8; }
+    .undo-btn.white-undo:hover:not(:disabled) { background: #ccc; color: #222; }
+
+    #divider { color: #5a3e1e; font-size: 1.2rem; }
+
+    #last-move-label {
+      font-size: 0.75rem;
+      color: #a08050;
+      margin-top: 0.6rem;
+      letter-spacing: 1px;
+      height: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>五子棋</h1>
+  <div id="subtitle">WUZIQI · FIVE IN A ROW</div>
+
+  <div id="ui">
+    <div class="score-box">
+      <div class="label">BLACK</div>
+      <div class="stone black"></div>
+      <div class="value" id="score-black">0</div>
+    </div>
+
+    <div id="status-wrap">
+      <div id="status">Black's turn</div>
+      <div id="turn-indicator">
+        <div id="turn-stone" class="stone black"></div>
+        <span id="turn-text">to play</span>
+      </div>
+    </div>
+
+    <div class="score-box">
+      <div class="label">WHITE</div>
+      <div class="stone white"></div>
+      <div class="value" id="score-white">0</div>
+    </div>
+  </div>
+
+  <canvas id="board"></canvas>
+  <div id="last-move-label"></div>
+
+  <div id="buttons">
+    <button class="undo-btn black-undo" id="undo-black">⚫ Undo ↩ <span id="undo-black-count">(3)</span></button>
+    <button id="reset-btn">New Game</button>
+    <button class="undo-btn white-undo" id="undo-white">⚪ Undo ↩ <span id="undo-white-count">(3)</span></button>
+  </div>
+
+  <script>
+    const COLS = 15, ROWS = 15;
+    const CELL = 38, PAD = 28;
+    const W = PAD * 2 + CELL * (COLS - 1);
+    const H = PAD * 2 + CELL * (ROWS - 1);
+
+    const canvas = document.getElementById('board');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    const scores = { black: 0, white: 0 };
+    const MAX_UNDOS = 3;
+    let grid, history, currentPlayer, gameOver, undoUsed;
+
+    function init() {
+      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+      history = [];
+      currentPlayer = 1; // 1=black, 2=white
+      gameOver = false;
+      undoUsed = { 1: 0, 2: 0 };
+      document.getElementById('status').textContent = "Black's turn";
+      document.getElementById('last-move-label').textContent = '';
+      document.getElementById('turn-indicator').style.display = '';
+      updateTurnIndicator();
+      updateUndoButtons();
+      draw();
+    }
+
+    /* ── Drawing ── */
+    function draw() {
+      // Board background
+      const grad = ctx.createRadialGradient(W/2, H/2, 10, W/2, H/2, W*0.7);
+      grad.addColorStop(0, '#d4a84b');
+      grad.addColorStop(1, '#a0722a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Grid lines
+      ctx.strokeStyle = '#6b4c1e';
+      ctx.lineWidth = 1;
+      for (let r = 0; r < ROWS; r++) {
+        const y = PAD + r * CELL;
+        ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(PAD + (COLS-1)*CELL, y); ctx.stroke();
+      }
+      for (let c = 0; c < COLS; c++) {
+        const x = PAD + c * CELL;
+        ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, PAD + (ROWS-1)*CELL); ctx.stroke();
+      }
+
+      // Star points (天元 + 星)
+      const stars = [[3,3],[3,11],[7,7],[11,3],[11,11]];
+      ctx.fillStyle = '#6b4c1e';
+      stars.forEach(([r,c]) => {
+        ctx.beginPath();
+        ctx.arc(PAD + c*CELL, PAD + r*CELL, 4, 0, Math.PI*2);
+        ctx.fill();
+      });
+
+      // Stones
+      const lastMove = history[history.length - 1];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c]) {
+            drawStone(c, r, grid[r][c], lastMove && lastMove[0]===r && lastMove[1]===c);
+          }
+        }
+      }
+    }
+
+    function drawStone(col, row, player, isLast) {
+      const x = PAD + col * CELL, y = PAD + row * CELL;
+      const r = CELL * 0.44;
+
+      const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.05, x, y, r);
+      if (player === 1) {
+        grad.addColorStop(0, '#888');
+        grad.addColorStop(0.4, '#333');
+        grad.addColorStop(1, '#000');
+      } else {
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.5, '#e0e0e0');
+        grad.addColorStop(1, '#aaaaaa');
+      }
+
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // shadow
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      // last move marker
+      if (isLast) {
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.28, 0, Math.PI * 2);
+        ctx.fillStyle = player === 1 ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)';
+        ctx.fill();
+      }
+    }
+
+    function highlightWin(cells) {
+      cells.forEach(([r, c]) => {
+        const x = PAD + c * CELL, y = PAD + r * CELL, rad = CELL * 0.44;
+        ctx.beginPath();
+        ctx.arc(x, y, rad + 3, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff4040';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      });
+    }
+
+    /* ── Input ── */
+    canvas.addEventListener('click', e => {
+      if (gameOver) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top)  * (H / rect.height);
+      const col = Math.round((mx - PAD) / CELL);
+      const row = Math.round((my - PAD) / CELL);
+      if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+      if (grid[row][col]) return;
+
+      grid[row][col] = currentPlayer;
+      history.push([row, col]);
+      draw();
+
+      const winCells = checkWin(row, col, currentPlayer);
+      if (winCells) {
+        highlightWin(winCells);
+        const winner = currentPlayer === 1 ? 'Black' : 'White';
+        document.getElementById('status').textContent = `${winner} wins! 🎉`;
+        document.getElementById('turn-indicator').style.display = 'none';
+        document.getElementById('last-move-label').textContent = '';
+        scores[winner.toLowerCase()]++;
+        updateScores();
+        gameOver = true;
+        updateUndoButtons();
+        return;
+      }
+
+      if (history.length === ROWS * COLS) {
+        document.getElementById('status').textContent = 'Draw!';
+        document.getElementById('turn-indicator').style.display = 'none';
+        gameOver = true;
+        updateUndoButtons();
+        return;
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      const name = currentPlayer === 1 ? 'Black' : 'White';
+      document.getElementById('status').textContent = `${name}'s turn`;
+      document.getElementById('last-move-label').textContent =
+        `Last: ${String.fromCharCode(65 + col)}${row + 1}`;
+      updateTurnIndicator();
+      updateUndoButtons();
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      if (gameOver) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top)  * (H / rect.height);
+      const col = Math.round((mx - PAD) / CELL);
+      const row = Math.round((my - PAD) / CELL);
+      draw();
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS && !grid[row][col]) {
+        ctx.globalAlpha = 0.35;
+        drawStone(col, row, currentPlayer, false);
+        ctx.globalAlpha = 1;
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => draw());
+
+    /* ── Win detection ── */
+    function checkWin(row, col, player) {
+      const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+      for (const [dr, dc] of dirs) {
+        const line = [[row, col]];
+        for (let s = 1; s <= 4; s++) {
+          const r = row + dr*s, c = col + dc*s;
+          if (r<0||r>=ROWS||c<0||c>=COLS||grid[r][c]!==player) break;
+          line.push([r,c]);
+        }
+        for (let s = 1; s <= 4; s++) {
+          const r = row - dr*s, c = col - dc*s;
+          if (r<0||r>=ROWS||c<0||c>=COLS||grid[r][c]!==player) break;
+          line.push([r,c]);
+        }
+        if (line.length >= 5) return line;
+      }
+      return null;
+    }
+
+    /* ── Undo ── */
+    // A player can undo their own last stone, but only when it's the opponent's turn
+    // (i.e. the player just placed a stone and wants to take it back).
+    // Each player gets MAX_UNDOS uses per game.
+    function doUndo(player) {
+      // The requesting player's stone is the one placed just before the current player's turn.
+      // Since turns strictly alternate, the last history entry belongs to the player who just moved.
+      // That player = opponent of currentPlayer.
+      const justMoved = currentPlayer === 1 ? 2 : 1;
+      if (player !== justMoved) return; // not their stone to undo
+      if (undoUsed[player] >= MAX_UNDOS) return;
+      if (history.length === 0) return;
+
+      if (gameOver) {
+        gameOver = false;
+        document.getElementById('turn-indicator').style.display = '';
+      }
+
+      const [r, c] = history.pop();
+      grid[r][c] = 0;
+      undoUsed[player]++;
+
+      // turn goes back to the player who just undid
+      currentPlayer = player;
+      const name = player === 1 ? 'Black' : 'White';
+      const remaining = MAX_UNDOS - undoUsed[player];
+      document.getElementById('status').textContent = `${name}'s turn (undid — ${remaining} undo${remaining !== 1 ? 's' : ''} left)`;
+      const prev = history[history.length - 1];
+      document.getElementById('last-move-label').textContent = prev
+        ? `Last: ${String.fromCharCode(65 + prev[1])}${prev[0] + 1}` : '';
+      updateTurnIndicator();
+      updateUndoButtons();
+      draw();
+    }
+
+    document.getElementById('undo-black').addEventListener('click', () => doUndo(1));
+    document.getElementById('undo-white').addEventListener('click', () => doUndo(2));
+
+    document.getElementById('reset-btn').addEventListener('click', () => init());
+
+    function updateUndoButtons() {
+      const justMoved = currentPlayer === 1 ? 2 : 1;
+      const btnBlack = document.getElementById('undo-black');
+      const btnWhite = document.getElementById('undo-white');
+      const remBlack = MAX_UNDOS - undoUsed[1];
+      const remWhite = MAX_UNDOS - undoUsed[2];
+
+      document.getElementById('undo-black-count').textContent = `(${remBlack})`;
+      document.getElementById('undo-white-count').textContent = `(${remWhite})`;
+
+      // Black can undo only if they just moved (justMoved===1) and have uses left and game not fresh
+      btnBlack.disabled = gameOver
+        ? !(history.length > 0 && justMoved === 1 && remBlack > 0)
+        : !(justMoved === 1 && remBlack > 0 && history.length > 0);
+      btnWhite.disabled = gameOver
+        ? !(history.length > 0 && justMoved === 2 && remWhite > 0)
+        : !(justMoved === 2 && remWhite > 0 && history.length > 0);
+    }
+
+    function updateTurnIndicator() {
+      const stone = document.getElementById('turn-stone');
+      stone.className = 'stone ' + (currentPlayer === 1 ? 'black' : 'white');
+      document.getElementById('turn-text').textContent = 'to play';
+    }
+
+    function updateScores() {
+      document.getElementById('score-black').textContent = scores.black;
+      document.getElementById('score-white').textContent = scores.white;
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -44,4 +44,4 @@ Each game is a **single HTML file** with three sections:
 | `bbf7077` | 2026-03-09 | `feat` — add Wuziqi 15×15 canvas game (stone preview, win detection, undo) |
 | `a8da4cc` | 2026-03-09 | `chore` — add CLAUDE.md with architecture and workflow docs |
 | `ed4c32e` | 2026-03-09 | `chore` — add changelog table and CLAUDE.md update rule |
-| *(next)*  | 2026-03-09 | `feat` — add per-turn 60s countdown timer to Wuziqi |
+| `71a735b` | 2026-03-09 | `feat` — add per-turn 60s countdown timer to Wuziqi |
